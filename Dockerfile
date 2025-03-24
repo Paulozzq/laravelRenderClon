@@ -1,19 +1,33 @@
-FROM php:8.2-fpm-alpine
+# Imagen base con PHP y Composer
+FROM php:8.2-cli
 
-RUN apk add --no-cache nodejs npm curl bash zip unzip git
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    unzip \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    && docker-php-ext-install pdo mbstring exif pcntl bcmath gd
 
+# Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Establecer directorio de trabajo
 WORKDIR /var/www
 
+# Copiar archivos del proyecto
 COPY . .
 
+# Instalar dependencias de Laravel
 RUN composer install --no-dev --optimize-autoloader
-RUN npm install && npm run build
 
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
-RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+# Dar permisos a las carpetas de almacenamiento
+RUN chmod -R 775 storage bootstrap/cache
 
-EXPOSE 9000
+# Exponer el puerto en el que Laravel escuchará
+EXPOSE 8000
 
-CMD ["php-fpm"]
+# Comando de inicio: Levantar Laravel con php artisan serve
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
