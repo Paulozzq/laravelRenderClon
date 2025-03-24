@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
-    && docker-php-ext-install pdo mbstring exif pcntl bcmath gd
+    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd
 
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -20,11 +20,29 @@ WORKDIR /var/www
 # Copiar archivos del proyecto
 COPY . .
 
+# Crear archivo .env manualmente dentro del contenedor
+RUN echo "APP_NAME=Laravel" > .env && \
+    echo "APP_ENV=local" >> .env && \
+    echo "APP_KEY=" >> .env && \
+    echo "APP_DEBUG=true" >> .env && \
+    echo "APP_URL=http://localhost" >> .env && \
+    echo "LOG_CHANNEL=stack" >> .env && \
+    echo "DB_CONNECTION=mysql" >> .env && \
+    echo "DB_HOST=127.0.0.1" >> .env && \
+    echo "DB_PORT=3306" >> .env && \
+    echo "DB_DATABASE=laravel" >> .env && \
+    echo "DB_USERNAME=root" >> .env && \
+    echo "DB_PASSWORD=" >> .env
+
+# Generar clave de aplicación
+RUN php artisan key:generate
+
 # Instalar dependencias de Laravel
 RUN composer install --no-dev --optimize-autoloader
 
-# Dar permisos a las carpetas de almacenamiento
-RUN chmod -R 775 storage bootstrap/cache
+# Asignar permisos correctos
+RUN chmod -R 775 storage bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
 
 # Exponer el puerto en el que Laravel escuchará
 EXPOSE 8000
