@@ -1,5 +1,5 @@
-# Imagen base con PHP y Composer
-FROM php:8.2-cli
+# Usar una imagen base con PHP, Composer y Node.js
+FROM php:8.2-apache
 
 # Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
+    mariadb-server \
+    netcat \
     && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd
 
 # Instalar Composer
@@ -20,7 +22,7 @@ WORKDIR /var/www
 # Copiar archivos del proyecto
 COPY . .
 
-# Instalar dependencias de Laravel (ANTES de generar la clave)
+# Instalar dependencias de Laravel
 RUN composer install --no-dev --optimize-autoloader
 
 # Crear archivo .env manualmente dentro del contenedor
@@ -31,21 +33,28 @@ RUN echo "APP_NAME=Laravel" > .env && \
     echo "APP_URL=http://localhost" >> .env && \
     echo "LOG_CHANNEL=stack" >> .env && \
     echo "DB_CONNECTION=mysql" >> .env && \
-    echo "DB_HOST=127.0.0.1" >> .env && \
+    echo "DB_HOST=127.0.0.1" >> .env && \  # MySQL está en el mismo contenedor
     echo "DB_PORT=3306" >> .env && \
     echo "DB_DATABASE=laravel" >> .env && \
     echo "DB_USERNAME=root" >> .env && \
-    echo "DB_PASSWORD=" >> .env
+    echo "DB_PASSWORD=root" >> .env
 
-# Generar clave de aplicación (AHORA Laravel tiene `vendor/autoload.php`)
+# Generar clave de aplicación
 RUN php artisan key:generate
+
+# Configurar MySQL
+RUN service mysql start && \
+    mysql -u root -e "CREATE DATABASE IF NOT EXISTS laravel;"
+
+# Ejecutar migraciones
+RUN php artisan migrate --force
 
 # Asignar permisos correctos
 RUN chmod -R 775 storage bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
 # Exponer el puerto en el que Laravel escuchará
-EXPOSE 8000
+EXPOSE 80
 
-# Comando de inicio: Levantar Laravel con php artisan serve
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# Iniciar MySQL y Laravel al arrancar el contenedor
+CMD service mysql start && apache2-foreground
