@@ -7,7 +7,6 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libpq-dev \
-    postgresql \
     && docker-php-ext-install pdo pdo_pgsql
 
 # Instalar Composer
@@ -22,37 +21,32 @@ COPY . .
 # Instalar dependencias de Laravel
 RUN composer install --no-dev --optimize-autoloader
 
-# Crear archivo .env manualmente dentro del contenedor
+# Configurar el archivo .env con PostgreSQL
 RUN echo "APP_NAME=Laravel" > .env && \
-    echo "APP_ENV=local" >> .env && \
+    echo "APP_ENV=production" >> .env && \
     echo "APP_KEY=" >> .env && \
-    echo "APP_DEBUG=true" >> .env && \
+    echo "APP_DEBUG=false" >> .env && \
     echo "APP_URL=http://localhost" >> .env && \
     echo "LOG_CHANNEL=stack" >> .env && \
     echo "DB_CONNECTION=pgsql" >> .env && \
-    echo "DB_HOST=127.0.0.1" >> .env && \
-    echo "DB_PORT=5432" >> .env && \
-    echo "DB_DATABASE=laravel" >> .env && \
-    echo "DB_USERNAME=postgres" >> .env && \
-    echo "DB_PASSWORD=postgres" >> .env
+    echo "DB_HOST=${DATABASE_HOST}" >> .env && \
+    echo "DB_PORT=${DATABASE_PORT}" >> .env && \
+    echo "DB_DATABASE=${DATABASE_NAME}" >> .env && \
+    echo "DB_USERNAME=${DATABASE_USER}" >> .env && \
+    echo "DB_PASSWORD=${DATABASE_PASSWORD}" >> .env
 
 # Generar clave de aplicación
 RUN php artisan key:generate
 
-# Iniciar PostgreSQL y crear la base de datos
-RUN service postgresql start && \
-    sudo -u postgres psql -c "CREATE DATABASE laravel;" && \
-    sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
-
 # Ejecutar migraciones de Laravel
-RUN php artisan migrate --force
+RUN php artisan migrate --force || true
 
 # Asignar permisos correctos
 RUN chmod -R 775 storage bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
-# Exponer el puerto 8000 para Laravel
+# Exponer el puerto 8000
 EXPOSE 8000
 
 # Comando de inicio: Levantar Laravel con php artisan serve
-CMD service postgresql start && php artisan serve --host=0.0.0.0 --port=8000
+CMD php artisan serve --host=0.0.0.0 --port=8000
