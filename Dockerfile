@@ -25,15 +25,14 @@ COPY . .
 # Instalar dependencias de Laravel
 RUN composer install --no-dev --optimize-autoloader
 
-# Crear archivo .env manualmente dentro del contenedor
-RUN echo "APP_NAME=Laravel" > .env && \
+RUN echo "APP_NAME=Laravel" >> .env && \
     echo "APP_ENV=local" >> .env && \
     echo "APP_KEY=" >> .env && \
     echo "APP_DEBUG=true" >> .env && \
     echo "APP_URL=http://localhost" >> .env && \
     echo "LOG_CHANNEL=stack" >> .env && \
     echo "DB_CONNECTION=mysql" >> .env && \
-    echo "DB_HOST=127.0.0.1" >> .env && \  # MySQL está en el mismo contenedor
+    echo "DB_HOST=127.0.0.1" >> .env && \
     echo "DB_PORT=3306" >> .env && \
     echo "DB_DATABASE=laravel" >> .env && \
     echo "DB_USERNAME=root" >> .env && \
