@@ -7,4 +7,4 @@ use App\Http\Controllers\PauloController;
 Route::get('/', function () {
     return view('welcome');
 });
-Route::get('/dilan', [PauloController::class, 'index']);
+Route::get('/presentacion', [PauloController::class, 'index']);
