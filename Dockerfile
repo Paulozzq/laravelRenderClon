@@ -1,52 +1,44 @@
-# Imagen base con PHP y Composer
-FROM php:8.2-cli
+# Usar una imagen oficial de PHP con soporte para Composer
+FROM php:8.2-fpm
 
-# Instalar dependencias del sistema
-RUN apt-get update && apt-get install -y \
-    unzip \
-    git \
-    curl \
-    libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql
-
-# Instalar Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Establecer directorio de trabajo
+# Establecer el directorio de trabajo
 WORKDIR /var/www
 
-# Copiar archivos del proyecto
+# Instalar dependencias necesarias (PostgreSQL, extensiones de PHP, Composer)
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    zip \
+    git \
+    && docker-php-ext-install pdo pdo_pgsql \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Copiar los archivos del proyecto
 COPY . .
 
 # Instalar dependencias de Laravel
 RUN composer install --no-dev --optimize-autoloader
 
-# Configurar el archivo .env con PostgreSQL
-RUN echo "APP_NAME=Laravel" > .env && \
-    echo "APP_ENV=production" >> .env && \
-    echo "APP_KEY=" >> .env && \
-    echo "APP_DEBUG=false" >> .env && \
-    echo "APP_URL=http://localhost" >> .env && \
-    echo "LOG_CHANNEL=stack" >> .env && \
-    echo "DB_CONNECTION=pgsql" >> .env && \
-    echo "DB_HOST=${DATABASE_HOST}" >> .env && \
-    echo "DB_PORT=${DATABASE_PORT}" >> .env && \
-    echo "DB_DATABASE=${DATABASE_NAME}" >> .env && \
-    echo "DB_USERNAME=${DATABASE_USER}" >> .env && \
-    echo "DB_PASSWORD=${DATABASE_PASSWORD}" >> .env
+# Configurar las variables de entorno (como .env) de Laravel
+RUN echo "APP_NAME=Laravel" >> .env
+RUN echo "APP_ENV=local" >> .env
+RUN echo "APP_KEY=base64:CYxZypwXFKB2R389b3GCzR4aTyV2DH7Zf94SzGt3yjY=" >> .env
+RUN echo "APP_DEBUG=true" >> .env
+RUN echo "APP_URL=http://localhost" >> .env
+RUN echo "DB_CONNECTION=pgsql" >> .env
+RUN echo "DB_HOST=dpg-cvh0a78gph6c73dal230-a" >> .env
+RUN echo "DB_PORT=5432" >> .env
+RUN echo "DB_DATABASE=lab2_wn2j" >> .env
+RUN echo "DB_USERNAME=root" >> .env
+RUN echo "DB_PASSWORD=iC41b28DdFWTg6HEbHzT9SmxAI6ghCXo" >> .env
 
-# Generar clave de aplicación
+# Generar la clave de la aplicación Laravel
 RUN php artisan key:generate
 
-# Ejecutar migraciones de Laravel
-RUN php artisan migrate --force || true
+# Ejecutar migraciones
+RUN php artisan migrate --force
 
-# Asignar permisos correctos
-RUN chmod -R 775 storage bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache
-
-# Exponer el puerto 8000
+# Exponer el puerto en el que Laravel escuchará
 EXPOSE 8000
 
-# Comando de inicio: Levantar Laravel con php artisan serve
-CMD php artisan serve --host=0.0.0.0 --port=8000
+# Comando para iniciar el servidor de Laravel
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
